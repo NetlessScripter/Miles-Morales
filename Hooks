@@ -1,0 +1,151 @@
+local E = {}
+
+local function cls(c)
+	c.__index = c
+	return c
+end
+
+E.GetSongInfo = cls({
+	new = function(n, a, id)
+		return setmetatable({
+			n = n,
+			a = a,
+			id = id
+		}, E.GetSongInfo)
+	end,
+	songName = function(s)
+		return s.n
+	end,
+	artistName = function(s)
+		return s.a
+	end,
+	gdSongID = function(s)
+		return s.id
+	end
+})
+
+E.ManualSongAdded = cls({
+	new = function(n, s)
+		return setmetatable({
+			n = n,
+			s = s
+		}, E.ManualSongAdded)
+	end,
+	nongs = function(t)
+		return t.n
+	end,
+	song = function(t)
+		return t.s
+	end
+})
+
+E.NongDeleted = cls({
+	new = function(u, id)
+		return setmetatable({
+			u = u,
+			id = id
+		}, E.NongDeleted)
+	end,
+	uniqueId = function(t)
+		return t.u
+	end,
+	gdId = function(t)
+		return t.id
+	end
+})
+
+E.SongDownloadFailed = cls({
+	new = function(id, u, e)
+		return setmetatable({
+			id = id,
+			u = u,
+			e = e
+		}, E.SongDownloadFailed)
+	end,
+	gdSongId = function(t)
+		return t.id
+	end,
+	uniqueId = function(t)
+		return t.u
+	end,
+	error = function(t)
+		return t.e
+	end
+})
+
+E.SongDownloadFinished = cls({
+	new = function(src, dst)
+		return setmetatable({
+			src = src,
+			dst = dst
+		}, E.SongDownloadFinished)
+	end,
+	indexSource = function(t)
+		return t.src
+	end,
+	destination = function(t)
+		return t.dst
+	end
+})
+
+E.SongDownloadProgress = cls({
+	new = function(id, u, p)
+		return setmetatable({
+			id = id,
+			u = u,
+			p = p
+		}, E.SongDownloadProgress)
+	end,
+	gdSongID = function(t)
+		return t.id
+	end,
+	uniqueID = function(t)
+		return t.u
+	end,
+	progress = function(t)
+		return t.p
+	end
+})
+
+E.SongError = cls({
+	new = function(n, e)
+		return setmetatable({
+			n = n,
+			e = e
+		}, E.SongError)
+	end,
+	error = function(t)
+		return t.e
+	end,
+	notifyUser = function(t)
+		return t.n
+	end
+})
+
+E.SongStateChanged = cls({
+	new = function(n)
+		return setmetatable({
+			n = n
+		}, E.SongStateChanged)
+	end,
+	nongs = function(t)
+		return t.n
+	end
+})
+
+E.StartDownload = cls({
+	new = function(id, u)
+		return setmetatable({
+			id = id,
+			u = u
+		}, E.StartDownload)
+	end,
+	gdSongID = function(t)
+		return t.id
+	end,
+	uniqueID = function(t)
+		return t.u
+	end
+})
+
+return E
