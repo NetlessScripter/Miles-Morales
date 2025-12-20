@@ -1,0 +1,161 @@
+local J = {}
+
+local Ev = require(script.Parent.Events)
+
+local fs = {
+	exists = isfile
+}
+
+J.NongManager = {
+	data = {},
+	active = {},
+	preparing = nil,
+	initialized = false
+}
+
+function J.NongManager:init()
+	self.initialized = true
+end
+
+function J.NongManager:adjustSongID(id, robtop)
+	if robtop then
+		return -id - 1
+	end
+	return id
+end
+
+function J.NongManager:hasSongID(id)
+	return self.data[id] ~= nil
+end
+
+function J.NongManager:getNongs(id)
+	return self.data[id]
+end
+
+function J.NongManager:setNongs(id, nongs)
+	self.data[id] = nongs
+end
+
+function J.NongManager:getActiveNong(id)
+	local n = self.data[id]
+	if not n then return nil end
+	return n.active
+end
+
+function J.NongManager:getFormattedSize(path)
+	if not fs.exists(path) then
+		return "0.00MB"
+	end
+	local s = #readfile(path)
+	return string.format("%.2fMB", s / 1024 / 1024)
+end
+
+J.Song = {}
+J.Song.__index = J.Song
+
+function J.Song.new(meta, path)
+	return setmetatable({
+		meta = meta,
+		p = path
+	}, J.Song)
+end
+
+function J.Song:metadata()
+	return self.meta
+end
+
+function J.Song:path()
+	return self.p
+end
+
+J.Nongs = {}
+J.Nongs.__index = J.Nongs
+
+function J.Nongs.new(id, songs)
+	return setmetatable({
+		id = id,
+		songs = songs,
+		activeIndex = 1
+	}, J.Nongs)
+end
+
+function J.Nongs:songID()
+	return self.id
+end
+
+function J.Nongs:active()
+	return self.songs[self.activeIndex]
+end
+
+function J.Nongs:isDefaultActive()
+	return self.activeIndex == 1
+end
+
+function J.Nongs:setActive(i)
+	self.activeIndex = i
+	Ev.SongStateChanged.new(self):post()
+end
+
+J.Audio = {}
+
+function J.Audio:resolvePath(songID)
+	J.NongManager.preparing = nil
+
+	local n = J.NongManager:getNongs(songID)
+	if not n then
+		return nil
+	end
+
+	local s = n:active()
+	if not fs.exists(s:path()) then
+		return nil
+	end
+
+	J.NongManager.preparing = n
+	return s:path()
+end
+
+function J.Audio:applyStartOffset(sound)
+	if not J.NongManager.preparing then
+		return
+	end
+	local off = J.NongManager.preparing:active():metadata().startOffset or 0
+	sound.TimePosition = off
+end
+
+J.Download = {}
+
+function J.Download:onSongInfoResolved(name, artist, id)
+	Ev.GetSongInfo.new(name, artist, id):post()
+end
+
+function J.Download:overrideSongInfo(id, info)
+	local n = J.NongManager:getNongs(id)
+	if not n then return info end
+
+	local s = n:active()
+	info.Name = s:metadata().name
+	info.Artist = s:metadata().artist
+	return info
+end
+
+J.Level = {}
+
+function J.Level:getAudioForLevel(level)
+	if level.songID ~= 0 then
+		return nil
+	end
+
+	local id = (-level.audioTrack) - 1
+	return J.Audio:resolvePath(id)
+end
+
+J.UI = {}
+
+function J.UI:getDisplaySongName(id)
+	local n = J.NongManager:getNongs(id)
+	if not n then return nil end
+	return n:active():metadata().name
+end
+
+return J
