@@ -1,0 +1,115 @@
+local J = {}
+
+local function task()
+	local t = {p=0,d=nil,e=nil,c=nil}
+	function t:progress(v)
+		self.p=v
+		if self.c then self.c(v) end
+	end
+	function t:resolve(v)
+		self.d=v
+	end
+	function t:reject(v)
+		self.e=v
+	end
+	function t:andThen(f)
+		self.c=f
+		return self
+	end
+	return t
+end
+
+local function httpget(u)
+	if syn and syn.request then
+		local r=syn.request({Url=u,Method="GET"})
+		return r.StatusCode==200,r.Body,r.StatusCode
+	end
+	local s,p=pcall(game.HttpGet,game,u)
+	if not s then return false,nil,0 end
+	return true,p,200
+end
+
+function J.startHostedDownload(u)
+	local t=task()
+	spawn(function()
+		local ok,b,c=httpget(u)
+		if not ok then
+			if c==502 then
+				t:reject("Web request failed. Service unavailable")
+			else
+				t:reject("Web request failed. Status "..tostring(c))
+			end
+			return
+		end
+		t:progress(1)
+		t:resolve(b)
+	end)
+	return t
+end
+
+local function parseUrl(j)
+	if type(j)~="table" then return nil,"invalid json" end
+	if j.status~="stream" then return nil,"invalid metadata status" end
+	if type(j.url)~="string" then return nil,"no download url returned" end
+	return j.url
+end
+
+local function getMeta(id)
+	local body=game:GetService("HttpService"):JSONEncode({
+		url="https://www.youtube.com/watch?v="..id,
+		aFormat="mp3",
+		isAudioOnly="true"
+	})
+	if syn and syn.request then
+		return syn.request({
+			Url="https://api.cobalt.tools/api/json",
+			Method="POST",
+			Headers={
+				["Content-Type"]="application/json",
+				["Accept"]="application/json"
+			},
+			Body=body
+		})
+	end
+	return nil
+end
+
+function J.startYoutubeDownload(id)
+	local t=task()
+	if #id~=11 then
+		t:reject("Invalid YouTube ID")
+		return t
+	end
+	spawn(function()
+		local r=getMeta(id)
+		if not r or r.StatusCode~=200 then
+			t:reject("metadata query failed")
+			return
+		end
+		local ok,j=pcall(function()
+			return game:GetService("HttpService"):JSONDecode(r.Body)
+		end)
+		if not ok then
+			t:reject("invalid json")
+			return
+		end
+		local u,e=parseUrl(j)
+		if not u then
+			t:reject(e)
+			return
+		end
+		local d=J.startHostedDownload(u)
+		d:andThen(function(p)
+			t:progress(p)
+		end)
+		while not d.d and not d.e do task.wait() end
+		if d.e then
+			t:reject(d.e)
+		else
+			t:resolve(d.d)
+		end
+	end)
+	return t
+end
+
+return J
