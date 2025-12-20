@@ -1,0 +1,131 @@
+local J = {}
+
+J.CompatManifest = {}
+J.CompatManifest.__index = J.CompatManifest
+
+local HS = game:GetService("HttpService")
+
+local function rs(n)
+	local c="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	local r=""
+	for i=1,n do
+		local k=math.random(#c)
+		r=r..c:sub(k,k)
+	end
+	return r
+end
+
+local function ex(p)
+	return isfile and isfile(p)
+end
+
+local function mp()
+	return "nong_data.json"
+end
+
+local function readm()
+	if not ex(mp()) then return nil end
+	local ok,d=pcall(readfile,mp())
+	if not ok then return nil end
+	local ok2,j=pcall(function()
+		return HS:JSONDecode(d)
+	end)
+	if not ok2 then return nil end
+	return j
+end
+
+local function iss(v)
+	return type(v)=="table"
+		and type(v.songName)=="string"
+		and type(v.authorName)=="string"
+		and type(v.path)=="string"
+end
+
+local function ls(id,i,u)
+	return {
+		m={
+			id=id,
+			uniqueID=u,
+			name=i.songName,
+			artist=i.authorName,
+			startOffset=i.startOffset or 0
+		},
+		p=i.path
+	}
+end
+
+function J.manifestExists()
+	return ex(mp())
+end
+
+function J.backupManifest(d)
+	if not J.manifestExists() then return end
+	local b=".v2-compat-backup"
+	if not ex(b) then
+		makefolder(b)
+	end
+	if ex(b.."/nong_data.json") then
+		delfile(b.."/nong_data.json")
+	end
+	writefile(b.."/nong_data.json",readfile(mp()))
+	if d then
+		delfile(mp())
+	end
+end
+
+function J.parseManifest()
+	local j=readm()
+	if not j then return nil,"No manifest exists for V2" end
+	if type(j.version)~="number" then return nil,"Invalid JSON" end
+	if j.version<1 or j.version>3 then return nil,"Invalid JSON" end
+	if type(j.nongs)~="table" then return nil,"Invalid JSON" end
+	local r={}
+	for k,v in pairs(j.nongs) do
+		local id=tonumber(k)
+		if id then
+			if type(v.defaultPath)=="string"
+				and type(v.active)=="string"
+				and type(v.songs)=="table" then
+				local dp=v.defaultPath
+				local ap=v.active
+				local ds=nil
+				local as=nil
+				for _,s in pairs(v.songs) do
+					if iss(s) then
+						if s.path==dp then
+							ds=ls(id,s,rs(16))
+						end
+						if s.path==ap then
+							as=ls(id,s,rs(16))
+						end
+					end
+				end
+				if ds and as then
+					local all={}
+					for _,s in pairs(v.songs) do
+						if iss(s) then
+							local u
+							if s.path==dp then
+								u=ds.m.uniqueID
+							elseif s.path==ap then
+								u=as.m.uniqueID
+							else
+								u=rs(16)
+							end
+							all[#all+1]=ls(id,s,u)
+						end
+					end
+					r[id]={
+						id=id,
+						defaultSong=ds,
+						active=as,
+						songs=all
+					}
+				end
+			end
+		end
+	end
+	return r
+end
+
+return J
