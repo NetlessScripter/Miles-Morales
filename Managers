@@ -1,0 +1,142 @@
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local writefile = writefile or function(file, data) end
+local isfile = isfile or function(file) return false end
+local readfile = readfile or function(file) return "" end
+
+local Jukebox = {}
+
+-- IndexManager
+Jukebox.IndexManager = {}
+local IM = Jukebox.IndexManager
+IM.loadedIndexes = {}
+IM.nongsForId = {}
+IM.downloadProgress = {}
+IM.indexCacheDir = "indexes-cache"
+
+function IM:init()
+	if not isfolder(self.indexCacheDir) then
+		makefolder(self.indexCacheDir)
+	end
+end
+
+function IM:fetchIndex(index)
+	local url = index.url
+	local success, result = pcall(function()
+		return HttpService:GetAsync(url)
+	end)
+	if success then
+		local data = HttpService:JSONDecode(result)
+		data.url = url
+		self:loadIndex(data)
+		local hash = tostring(math.abs(url:hash()))
+		writefile(self.indexCacheDir .. "/" .. hash .. ".json", HttpService:JSONEncode(data))
+	end
+end
+
+function IM:fetchIndexes(indexes)
+	for _, index in pairs(indexes) do
+		if index.enabled then
+			self:fetchIndex(index)
+		end
+	end
+end
+
+function IM:loadIndex(json)
+	local hosted = json.nongs and json.nongs.hosted or {}
+	for key, song in pairs(hosted) do
+		local gdIDs = song.songIDs or {}
+		song.uniqueID = key
+		for _, id in ipairs(gdIDs) do
+			if not self.nongsForId[id] then self.nongsForId[id] = {} end
+			table.insert(self.nongsForId[id], song)
+		end
+	end
+	self.loadedIndexes[json.id or json.url] = json
+end
+
+function IM:downloadSong(gdSongID, uniqueID)
+	local songs = self.nongsForId[gdSongID] or {}
+	for _, song in pairs(songs) do
+		if song.uniqueID == uniqueID and song.url then
+			local fileName = "nongs/" .. gdSongID .. "-" .. uniqueID .. ".mp3"
+			if not isfolder("nongs") then makefolder("nongs") end
+			local success, data = pcall(function()
+				return HttpService:GetAsync(song.url, true)
+			end)
+			if success then
+				writefile(fileName, data)
+				self.downloadProgress[uniqueID] = 1
+				return fileName
+			else
+				self.downloadProgress[uniqueID] = nil
+				error("Download failed")
+			end
+		end
+	end
+	error("Song not found")
+end
+
+function IM:getSongDownloadProgress(uniqueID)
+	return self.downloadProgress[uniqueID] or 0
+end
+
+-- NongManager
+Jukebox.NongManager = {}
+local NM = Jukebox.NongManager
+NM.nongs = {}
+
+function NM:initSongID(gdSongID, name, artist)
+	if not self.nongs[gdSongID] then
+		self.nongs[gdSongID] = {active = nil, locals = {}}
+	end
+	local uid = HttpService:GenerateGUID(false)
+	local song = {uniqueID = uid, name = name, artist = artist, path = nil}
+	table.insert(self.nongs[gdSongID].locals, song)
+	self.nongs[gdSongID].active = song
+	return song
+end
+
+function NM:setActiveSong(gdSongID, uniqueID)
+	local entry = self.nongs[gdSongID]
+	if not entry then return false end
+	for _, s in pairs(entry.locals) do
+		if s.uniqueID == uniqueID then
+			entry.active = s
+			return true
+		end
+	end
+	return false
+end
+
+function NM:deleteSong(gdSongID, uniqueID)
+	local entry = self.nongs[gdSongID]
+	if not entry then return false end
+	for i, s in ipairs(entry.locals) do
+		if s.uniqueID == uniqueID then
+			table.remove(entry.locals, i)
+			if entry.active == s then entry.active = nil end
+			return true
+		end
+	end
+	return false
+end
+
+function NM:getNongs(gdSongID)
+	return self.nongs[gdSongID]
+end
+
+function NM:setSongPath(gdSongID, uniqueID, path)
+	local entry = self.nongs[gdSongID]
+	if not entry then return false end
+	for _, s in pairs(entry.locals) do
+		if s.uniqueID == uniqueID then
+			s.path = path
+			return true
+		end
+	end
+	return false
+end
+
+return Jukebox
