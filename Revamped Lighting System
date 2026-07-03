@@ -61,7 +61,7 @@ l.EnvironmentDiffuseScale = 0.10000000149011612
 l.ExposureCompensation = 0
 l.ColorShift_Bottom = Color3.new(0.49803921580314636,0.4588235318660736,0.22745098173618317)
 l.ColorShift_Top = Color3.new(0.8745098114013672,0.6274510025978088,0.007843137718737125)
-l.Technology = Enum.Technology.ShadowMap
+l.Technology = Enum.Technology.Future
 -- Low-angle sun: slightly softened, but still fairly crisp penumbra.
 l.ShadowSoftness = 0.28
 l.TimeOfDay = "-15:49:44"
