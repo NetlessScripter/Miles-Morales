@@ -1,0 +1,570 @@
+local function GetGitSound(GithubSnd, SoundName)
+    local url = GithubSnd
+    if not isfile(SoundName .. ".mp3") then
+        writefile(SoundName .. ".mp3", game:HttpGet(url))
+    end
+    local sound = Instance.new("Sound")
+    sound.SoundId = (getcustomasset or getsynasset)(SoundName .. ".mp3")
+    sound.Volume = 2
+    sound.Name = SoundName
+    sound.Parent = workspace
+    return sound
+end
+
+local sound = GetGitSound("https://github.com/NetlessScripter/Miles-Morales/blob/4ca3a065ba01d5725c25b60b124db5e45011d7dc/copy_ED540659-F7C4-479E-8DCD-51A711BF4CF5.mp3?raw=true", "theactualspiritbomb")
+sound:Play()
+
+task.spawn(function()
+wait(3.1)
+print("Spirit Bomb VFX here")
+
+task.spawn(function()
+    local TweenService = game:GetService("TweenService")
+    local RunService = game:GetService("RunService")
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    local model = game:GetObjects("rbxassetid://99926232093491")[1]
+    model.Parent = character
+
+    if not model.PrimaryPart then
+        model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart")
+    end
+
+    local root = character:WaitForChild("HumanoidRootPart")
+    model:SetPrimaryPartCFrame(root.CFrame * CFrame.new(0, 50, 0))
+
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = true
+        end
+    end
+
+    wait(2.1)
+
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = false
+        end
+    end
+
+    local startPos = model.PrimaryPart.Position
+    local forwardTarget = startPos + root.CFrame.LookVector * 50
+    local downTarget = startPos + Vector3.new(0, -126, 0)
+
+    local forwardValue = Instance.new("Vector3Value")
+    local downValue = Instance.new("Vector3Value")
+    forwardValue.Value = startPos
+    downValue.Value = startPos
+
+    local finalPosition = startPos
+
+    forwardValue:GetPropertyChangedSignal("Value"):Connect(function()
+        finalPosition = Vector3.new(
+            forwardValue.Value.X,
+            finalPosition.Y,
+            forwardValue.Value.Z
+        )
+        model:SetPrimaryPartCFrame(CFrame.new(finalPosition))
+    end)
+
+    downValue:GetPropertyChangedSignal("Value"):Connect(function()
+        finalPosition = Vector3.new(
+            finalPosition.X,
+            downValue.Value.Y,
+            finalPosition.Z
+        )
+        model:SetPrimaryPartCFrame(CFrame.new(finalPosition))
+    end)
+
+    local forwardTween = TweenService:Create(
+        forwardValue,
+        TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+        {Value = forwardTarget}
+    )
+
+    local downTween = TweenService:Create(
+        downValue,
+        TweenInfo.new(0.4, Enum.EasingStyle.Linear),
+        {Value = downTarget}
+    )
+
+    forwardTween:Play()
+    downTween:Play()
+
+    delay(0.35, function()
+        local lastPos = model.PrimaryPart.Position
+        local rootPart = Instance.new("Part")
+        rootPart.Anchored = true
+        rootPart.CanCollide = false
+        rootPart.Transparency = 1
+        rootPart.Size = Vector3.new(1,1,1)
+        rootPart.CFrame = CFrame.new(lastPos)
+        rootPart.Parent = workspace
+
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Players = game:GetService("Players")
+        local Replication = ReplicatedStorage.Replication
+
+        firesignal(Replication.OnClientEvent, 
+            {
+                NoUpSmoke = true,
+                stronger = {
+                    minus = 1,
+                    sound = "rbxassetid://12518569150",
+                    volume = 3
+                },
+                justdown = true,
+                Effect = "Wall Collision",
+                root = rootPart,
+                Time = 1,
+                AccurateCheck = true,
+                camshake = {
+                    player.Name,
+                    "Weakest Dummy"
+                }
+            }
+        )
+
+        wait(0.3)
+        model:Destroy()
+        rootPart:Destroy()
+
+task.spawn(function()
+local l_FiveSeasonsFX_1 = game:GetService("ReplicatedStorage").Resources.FiveSeasonsFX
+local l_LocalPlayer_0 = game.Players.LocalPlayer
+
+local v10778 = l_FiveSeasonsFX_1.FXUi
+local v10808 = l_FiveSeasonsFX_1.FSWhite:Clone()
+v10808.Parent = game.Lighting
+
+local v10809 = l_FiveSeasonsFX_1.FSBlack:Clone()
+v10809.Parent = game.Lighting
+
+v10778.Vignette.Visible = false
+
+for _, v10811 in pairs(l_LocalPlayer_0.PlayerGui:GetChildren()) do
+    if v10811.Name == "FXUi" and v10811 ~= v10778 then
+        v10811:Destroy()
+    end
+end
+
+v10808.Enabled = true
+task.wait(0.035)
+v10808.Enabled = false
+
+v10809.Enabled = true
+task.wait(0.035)
+v10809.Enabled = false
+
+v10808:Destroy()
+v10809:Destroy()
+end)
+
+    end)
+end)
+end)
+
+task.spawn(function()
+    local anm = "12447707844"
+    local a = Instance.new("Animation")
+    a.AnimationId = "rbxassetid://" .. anm
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local e = humanoid:LoadAnimation(a)
+    e:Play()
+    local ufw = game.ReplicatedStorage.Resources.UFW
+    local cloneRB = ufw.RB:Clone()
+    if not cloneRB.PrimaryPart then
+        cloneRB:GetPropertyChangedSignal("PrimaryPart"):Wait()
+    end
+    cloneRB:SetPrimaryPartCFrame(CFrame.new(1e6, 1e6, 1e6))
+    cloneRB.Parent = workspace.Thrown
+    cloneRB:ScaleTo(2)
+    local animController = cloneRB:WaitForChild("AnimationController")
+    local animTrack = animController:LoadAnimation(ufw.lastthing)
+    animTrack:Play()
+    animTrack.TimePosition = 1.4
+    game.Debris:AddItem(cloneRB, 3)
+    local invisiblePart = Instance.new("Part")
+    invisiblePart.Anchored = true
+    invisiblePart.Transparency = 1
+    invisiblePart.CanCollide = false
+    invisiblePart.CanQuery = false
+    invisiblePart.CanTouch = false
+    invisiblePart.CFrame = CFrame.new(40000, 40000, 40000)
+    invisiblePart.Parent = workspace.Thrown
+    game.Debris:AddItem(invisiblePart, 10)
+    task.spawn(function()
+        local textures = {}
+        for _, decal in pairs(ufw.vfx.Pillar.Preload:GetDescendants()) do
+            if decal:IsA("Decal") and decal.Texture ~= "" and not table.find(textures, decal.Texture) then
+                table.insert(textures, decal.Texture)
+            end
+        end
+        for _, texture in pairs(textures) do
+            local newDecal = Instance.new("Decal")
+            newDecal.Parent = invisiblePart
+            newDecal.Texture = texture
+            game.Debris:AddItem(newDecal, 3)
+            task.wait(0.0065)
+        end
+    end)
+   
+    local RunService = game:GetService("RunService")
+    local TweenService = game:GetService("TweenService")
+    local camRig = ufw.CamRigWithLetterBox:Clone()
+    camRig.RootPart.CFrame = camRig.RootPart.CFrame * CFrame.new(0, 0, 1e6)
+    camRig.Parent = workspace
+    local camAnim = camRig.AnimationController.Animator:LoadAnimation(ufw.Camera)
+    camAnim:Play()
+    local playedAnimTrack
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+        if track.Animation.AnimationId == "rbxassetid://" .. anm then
+            playedAnimTrack = track
+            break
+        end
+    end
+    if playedAnimTrack then
+        playedAnimTrack.Stopped:Connect(function()
+            camAnim:Stop()
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        end)
+    end
+    local impactFrames = ufw.ImpactFrames:Clone()
+    impactFrames.Parent = player.PlayerGui
+    for _, frame in pairs(impactFrames:GetChildren()) do
+        frame.Size = UDim2.new(0, 0, 0, 1)
+        frame.ImageTransparency = 0
+    end
+    for _, flexwork in pairs(ufw.Flexworks:GetChildren()) do
+        local cloneFlex = flexwork:Clone()
+        cloneFlex.Size = UDim2.new(0, 0, 0, 1)
+        cloneFlex.Position = UDim2.new(0, 0, 0, 0)
+        cloneFlex.Parent = impactFrames
+        task.delay(2, function()
+            cloneFlex:Destroy()
+        end)
+    end
+    task.spawn(function()
+        local flashClone = ufw.Flash:Clone()
+        local viewport = flashClone.Flashup.Viewport.Viewport
+        local cam = Instance.new("Camera", viewport)
+        viewport.CurrentCamera = cam
+        flashClone.Parent = player.PlayerGui
+        char.Archivable = true
+        local charClone = char:Clone()
+        charClone.PrimaryPart.Anchored = true
+        for _, obj in pairs(charClone:GetDescendants()) do
+            if obj.ClassName:find("Script") then
+                obj:Destroy()
+            end
+        end
+        for _, basepart in pairs(charClone:GetChildren()) do
+            if basepart:IsA("BasePart") then
+                basepart.Anchored = true
+            end
+        end
+        for _, highlight in pairs(charClone:GetDescendants()) do
+            if highlight:IsA("Highlight") then
+                highlight:Destroy()
+            end
+        end
+        charClone.Parent = viewport.Body
+        local userAnim = charClone.Humanoid:LoadAnimation(ufw.User)
+        userAnim:Play()
+        local conn = RunService.RenderStepped:Connect(function()
+            camRig.RootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, -3, 0) * CFrame.Angles(0, math.pi, 0)
+            cam.CFrame = camRig.camera.CFrame
+            for _, part in pairs(charClone:GetChildren()) do
+                if part:IsA("BasePart") then
+                    local originalPart = char:FindFirstChild(part.Name)
+                    if originalPart then
+                        part.CFrame = originalPart.CFrame
+                    end
+                end
+            end
+        end)
+        task.delay(0.2, function()
+            flashClone.Flashup.Viewport.BackgroundColor3 = Color3.new(0, 0, 0)
+            flashClone.Flashup.Viewport.Viewport.ImageColor3 = Color3.fromRGB(20, 20, 20)
+            TweenService:Create(flashClone.Flashup.Viewport, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.new(1, 1, 1)}):Play()
+            TweenService:Create(flashClone.Flashup.Viewport.Viewport, TweenInfo.new(0.8, Enum.EasingStyle.Quad), {ImageColor3 = Color3.new(1, 1, 1)}):Play()
+        end)
+        TweenService:Create(flashClone.Flashup, TweenInfo.new(2.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0.3, 0)}):Play()
+        TweenService:Create(cam, TweenInfo.new(2, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {FieldOfView = 120}):Play()
+        task.wait(1.2)
+
+PlayStoredAnimSpirit()
+
+task.spawn(function()
+wait(0.2)
+task.spawn(function()
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+wait(0.8)
+hrp.Anchored = true
+wait(3.6)
+hrp.Anchored = false
+
+end)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local fiveSeasonsFX = ReplicatedStorage.Resources.FiveSeasonsFX
+local character = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+local thrown = Workspace:WaitForChild("Thrown")
+
+task.delay(0, function()
+    task.spawn(function()
+        local jumpMeshes = fiveSeasonsFX.JumpMeshes:Clone()
+        jumpMeshes:SetPrimaryPartCFrame(character.HumanoidRootPart.CFrame)
+        jumpMeshes.Parent = thrown
+
+        task.delay(0.075, function()
+            for _, emitter in pairs(jumpMeshes.Lines:GetDescendants()) do
+                if emitter:IsA("ParticleEmitter") then
+                    local emitCount = tonumber(emitter.Name) or 0
+                    emitter:Emit(emitCount)
+                end
+            end
+        end)
+
+        task.spawn(function()
+            local mainClone = jumpMeshes.Main:Clone()
+            local startPart = mainClone.Start
+            local endPart = mainClone.End
+            local clonedMesh = startPart:Clone()
+            clonedMesh.Transparency = 0.95
+            clonedMesh.Name = "ClonedMesh"
+            clonedMesh.Parent = jumpMeshes.CurrentTweens
+
+            TweenService:Create(clonedMesh, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                CFrame = endPart.CFrame
+            }):Play()
+
+            TweenService:Create(clonedMesh, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = endPart.Size
+            }):Play()
+
+            task.wait(0.75)
+            clonedMesh:Destroy()
+        end)
+
+        task.spawn(function()
+            local wind3Clone = jumpMeshes.Wind3:Clone()
+            local startPart = wind3Clone.Start
+            local endPart = wind3Clone.End
+            local clonedMesh = startPart:Clone()
+            clonedMesh.Transparency = 0.75
+            clonedMesh.Name = "ClonedMesh"
+            clonedMesh.Parent = jumpMeshes.CurrentTweens
+
+            TweenService:Create(clonedMesh, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                CFrame = endPart.CFrame,
+                Size = endPart.Size
+            }):Play()
+
+            TweenService:Create(clonedMesh, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Transparency = 1
+            }):Play()
+
+            task.wait(0.8)
+            clonedMesh:Destroy()
+        end)
+
+        task.spawn(function()
+            local wind2Clone = jumpMeshes.Wind2:Clone()
+            local startPart = wind2Clone.Start
+            local endPart = wind2Clone.End
+            local clonedMesh = startPart:Clone()
+            clonedMesh.Transparency = 0.8
+            clonedMesh.Name = "ClonedMesh"
+            clonedMesh.Parent = jumpMeshes.CurrentTweens
+
+            TweenService:Create(clonedMesh, TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+                CFrame = endPart.CFrame
+            }):Play()
+
+            TweenService:Create(clonedMesh, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = endPart.Size,
+                Transparency = 1
+            }):Play()
+
+            task.wait(0.55)
+            clonedMesh:Destroy()
+        end)
+
+        local function WindFX2()
+            task.spawn(function()
+                local windDecalClone = jumpMeshes.WindDecal2:Clone()
+                windDecalClone:ScaleTo(Random.new():NextNumber(0.95, 2.35))
+                local tweenTime = Random.new():NextNumber(1, 2.75)
+                local randomAngle = math.rad(math.random(0, 360))
+
+                windDecalClone:SetPrimaryPartCFrame(windDecalClone.PrimaryPart.CFrame * CFrame.Angles(0, randomAngle, 0))
+                windDecalClone.End.CFrame = windDecalClone.End.CFrame * CFrame.Angles(0, randomAngle, 0)
+
+                local startPart = windDecalClone.Start
+                local endPart = windDecalClone.End
+                local clonedMesh = startPart:Clone()
+                clonedMesh.Decal.Transparency = Random.new():NextNumber(0.8, 0.93)
+                clonedMesh.Name = "ClonedMesh"
+                clonedMesh.Parent = jumpMeshes.CurrentTweens
+
+                TweenService:Create(clonedMesh, TweenInfo.new(tweenTime, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+                    Size = endPart.Size,
+                    CFrame = endPart.CFrame
+                }):Play()
+
+                TweenService:Create(clonedMesh.Mesh, TweenInfo.new(tweenTime, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+                    Scale = endPart.Mesh.Scale
+                }):Play()
+
+                TweenService:Create(clonedMesh.Decal, TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Transparency = 1
+                }):Play()
+
+                task.wait(4)
+                clonedMesh:Destroy()
+            end)
+        end
+
+        for _ = 1, 5 do
+            spawn(WindFX2)
+            task.wait(0.035)
+        end
+
+        task.wait(5)
+        jumpMeshes:Destroy()
+    end)
+
+    local jumpFXClone = fiveSeasonsFX.JumpFX:Clone()
+    jumpFXClone:SetPrimaryPartCFrame(character.HumanoidRootPart.CFrame)
+    jumpFXClone.Parent = thrown
+
+    local burnMark = jumpFXClone.JumpFX:FindFirstChild("BurnMark")
+    if burnMark then
+        burnMark:Destroy()
+    end
+
+    for _, emitter in pairs(jumpFXClone.JumpFX:GetDescendants()) do
+        if emitter:IsA("ParticleEmitter") then
+            emitter:Emit(emitter:GetAttribute("EmitCount") or 0)
+        end
+    end
+
+    jumpFXClone.JumpFX.EnabledP.Enabled = true
+
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(255, 66, 28)
+    highlight.OutlineColor = Color3.fromRGB(255, 44, 2)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0.6
+    highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+    highlight.Parent = character
+
+    TweenService:Create(highlight, TweenInfo.new(0.75, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut), {
+        FillTransparency = 1,
+        OutlineTransparency = 1
+    }):Play()
+
+    task.wait(0.5)
+
+    jumpFXClone.JumpFX.EnabledP.Enabled = false
+    task.wait(4)
+
+    jumpFXClone:Destroy()
+    highlight:Destroy()
+end)
+
+end)
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Root = Character:WaitForChild("HumanoidRootPart")
+
+local goalCFrame = Root.CFrame + Vector3.new(0, 126, 0)
+local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+
+local tween = TweenService:Create(Root, tweenInfo, {CFrame = goalCFrame})
+tween:Play()
+
+tween.Completed:Connect(function()
+	Root.Anchored = true
+end)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Replication = ReplicatedStorage:WaitForChild("Replication")
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+for _, conn in ipairs(getconnections(Replication.OnClientEvent)) do
+    conn:Fire({
+        Effect = "Velocity Forward",
+        Distance = 0,
+        Time = 0.35,
+        Up = 125
+    })
+    conn:Fire({
+        Intensity = 4,
+        Effect = "Camshake"
+    })
+end
+
+local RunService = game:GetService("RunService")
+local anchored = false
+
+local function checkHeight()
+    if hrp.Position.Y >= 125 and not anchored then
+        anchored = true
+        hrp.Anchored = true
+        return true
+    end
+    return false
+end
+
+local conn
+conn = RunService.Heartbeat:Connect(function()
+    if checkHeight() then
+        conn:Disconnect()
+    end
+end)
+
+        conn:Disconnect()
+        e:Stop()
+        userAnim:Stop()
+        charClone:Destroy()
+        flashClone:Destroy()
+        for _, part in pairs(charClone:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.Anchored = false
+            end
+        end
+    end)
+end)
+
+task.spawn(function()
+wait(0.5)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Replication = ReplicatedStorage.Replication -- RemoteEvent 
+
+firesignal(Replication.OnClientEvent, 
+    {
+        Intensity = 5,
+        Effect = "Camshake"
+    }
+)
+end)
