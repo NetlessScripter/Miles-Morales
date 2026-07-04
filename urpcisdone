@@ -1,0 +1,292 @@
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local AssetService = game:GetService("AssetService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+local RaycastDistance = 1500
+local SurfaceBias = 0.05
+local WhitePoint = Vector3.new(1, 1, 1)
+local TerrainColor = Vector3.new(0.34, 0.5, 0.29)
+
+local SkyHorizonColor = Vector3.new(0.364706, 0.682353, 0.815686)
+local SkyZenithColor = Vector3.new(0.658824, 0.701961, 0.729412)
+
+local RayBounceDepth = 5
+local SamplesPerPixel = 4
+local MinBufferDimension = 256
+local MaxBufferLongestDimension = 768
+
+local RaycastFilter = RaycastParams.new()
+RaycastFilter.FilterType = Enum.RaycastFilterType.Exclude
+RaycastFilter.FilterDescendantsInstances = {}
+
+local function refreshRaycastFilter()
+	local character = LocalPlayer.Character
+	RaycastFilter.FilterDescendantsInstances = character and { character } or {}
+end
+
+refreshRaycastFilter()
+LocalPlayer.CharacterAdded:Connect(refreshRaycastFilter)
+
+local ReflectionGui = Instance.new("ScreenGui")
+ReflectionGui.Name = "RaytracedReflections"
+ReflectionGui.IgnoreGuiInset = true
+ReflectionGui.ResetOnSpawn = false
+ReflectionGui.DisplayOrder = 5
+ReflectionGui.Parent = PlayerGui
+
+local ReflectionImageLabel = Instance.new("ImageLabel")
+ReflectionImageLabel.Name = "ReflectionOverlay"
+ReflectionImageLabel.AnchorPoint = Vector2.new(0, 0)
+ReflectionImageLabel.Position = UDim2.fromScale(0, 0)
+ReflectionImageLabel.Size = UDim2.fromScale(1, 1)
+ReflectionImageLabel.BackgroundTransparency = 1
+ReflectionImageLabel.ScaleType = Enum.ScaleType.Stretch
+ReflectionImageLabel.Parent = ReflectionGui
+
+local BufferWidth, BufferHeight = 0, 0
+local PixelBuffer = nil
+local ReflectionImage = nil
+local RenderToken = 0
+
+local function c3(v)
+	return Vector3.new(v.R, v.G, v.B)
+end
+
+local function allocateBuffer(width, height)
+	width = math.max(MinBufferDimension, math.floor(width))
+	height = math.max(MinBufferDimension, math.floor(height))
+
+	if ReflectionImage then
+		ReflectionImage:Destroy()
+	end
+
+	ReflectionImage = AssetService:CreateEditableImage({ Size = Vector2.new(width, height) })
+	ReflectionImageLabel.ImageContent = Content.fromObject(ReflectionImage)
+	PixelBuffer = buffer.create(width * height * 4)
+	BufferWidth, BufferHeight = width, height
+end
+
+local function currentAspectRatio()
+	local viewportSize = Camera and Camera.ViewportSize or Vector2.new(16, 9)
+	if viewportSize.Y <= 0 then
+		return 16 / 9
+	end
+	return viewportSize.X / viewportSize.Y
+end
+
+local function applyHighQualityResolution()
+	local viewportSize = Camera and Camera.ViewportSize or Vector2.new(1920, 1080)
+	local aspect = currentAspectRatio()
+	local longest = math.clamp(math.floor(math.max(viewportSize.X, viewportSize.Y)), MinBufferDimension, MaxBufferLongestDimension)
+
+	local width
+	local height
+	if viewportSize.X >= viewportSize.Y then
+		width = longest
+		height = math.max(MinBufferDimension, math.floor(width / aspect))
+	else
+		height = longest
+		width = math.max(MinBufferDimension, math.floor(height * aspect))
+	end
+
+	allocateBuffer(width, height)
+end
+
+local function sampleEnvironment(direction)
+	local upBlend = math.clamp(direction.Y * 0.5 + 0.5, 0, 1)
+	local baseSky = SkyHorizonColor:Lerp(SkyZenithColor, upBlend)
+
+	local ambient = c3(Lighting.Ambient)
+	local outdoor = c3(Lighting.OutdoorAmbient)
+	local colorShiftBottom = c3(Lighting.ColorShift_Bottom)
+	local colorShiftTop = c3(Lighting.ColorShift_Top)
+
+	local lightingBlend = baseSky * 0.5 + ambient * 0.25 + outdoor * 0.15
+	lightingBlend = lightingBlend + colorShiftBottom * (1 - upBlend) * 0.12 + colorShiftTop * upBlend * 0.12
+
+	local sunDirection = Lighting:GetSunDirection()
+	local sunFacing = math.clamp(direction:Dot(sunDirection), 0, 1)
+	local sunGlow = sunFacing ^ 48
+	local sunTint = WhitePoint * sunGlow * 0.5
+
+	return lightingBlend + sunTint
+end
+
+local function getBaseColor(hitInstance)
+	if hitInstance:IsA("Terrain") then
+		return TerrainColor
+	end
+
+	local baseColor = c3(hitInstance.Color)
+
+	if hitInstance:IsA("BasePart") then
+		local material = hitInstance.Material
+		if material == Enum.Material.Metal then
+			baseColor = baseColor * 0.95
+		elseif material == Enum.Material.Glass then
+			baseColor = baseColor:Lerp(WhitePoint, 0.35)
+		elseif material == Enum.Material.Neon then
+			baseColor = baseColor * 1.15
+		end
+
+		if hitInstance:FindFirstChildOfClass("SurfaceAppearance") then
+			baseColor = baseColor:Lerp(WhitePoint, 0.08)
+		end
+	end
+
+	return baseColor
+end
+
+local function getReflectance(hitInstance)
+	if hitInstance:IsA("Terrain") then
+		return 0
+	end
+
+	local reflectance = hitInstance.Reflectance
+
+	if hitInstance:IsA("BasePart") then
+		local material = hitInstance.Material
+		if material == Enum.Material.Metal then
+			reflectance = math.max(reflectance, 0.25)
+		elseif material == Enum.Material.Glass then
+			reflectance = math.max(reflectance, 0.65)
+		elseif material == Enum.Material.Ice then
+			reflectance = math.max(reflectance, 0.2)
+		end
+	end
+
+	return math.clamp(reflectance, 0, 0.95)
+end
+
+local function shadeHit(hitResult, incomingDirection, filter, depth)
+	local hitInstance = hitResult.Instance
+	local normal = hitResult.Normal
+	local sunDirection = Lighting:GetSunDirection()
+
+	local baseColor = getBaseColor(hitInstance)
+	local reflectance = getReflectance(hitInstance)
+
+	local diffuse = math.clamp(normal:Dot(sunDirection), 0, 1)
+	local shadowResult = workspace:Raycast(hitResult.Position + normal * SurfaceBias, sunDirection * RaycastDistance, filter)
+	if shadowResult ~= nil then
+		diffuse = diffuse * 0.22
+	end
+
+	local ambient = sampleEnvironment(normal)
+	local litColor = baseColor * (0.18 + diffuse * 0.82)
+	litColor = litColor:Lerp(ambient, 0.12)
+
+	if depth <= 1 or reflectance <= 0 then
+		return litColor
+	end
+
+	local reflectedDirection = incomingDirection - 2 * incomingDirection:Dot(normal) * normal
+	local bounceHit = workspace:Raycast(hitResult.Position + normal * SurfaceBias, reflectedDirection * RaycastDistance, filter)
+	local bounceColor = bounceHit and shadeHit(bounceHit, reflectedDirection, filter, depth - 1) or sampleEnvironment(reflectedDirection)
+
+	local viewFacing = math.clamp(-incomingDirection:Dot(normal), 0, 1)
+	local fresnel = (1 - viewFacing) ^ 5
+	local mix = math.clamp(reflectance + fresnel * 0.2, 0, 0.95)
+
+	return litColor:Lerp(bounceColor, mix)
+end
+
+local function tracePrimaryPixel(screenX, screenY, filter)
+	local ray = Camera:ScreenPointToRay(screenX, screenY)
+	local primaryHit = workspace:Raycast(ray.Origin, ray.Direction * RaycastDistance, filter)
+
+	if primaryHit == nil then
+		return sampleEnvironment(ray.Direction), 1
+	end
+
+	return shadeHit(primaryHit, ray.Direction, filter, RayBounceDepth), 1
+end
+
+local SampleOffsets = {
+	Vector2.new(0.25, 0.25),
+	Vector2.new(0.75, 0.25),
+	Vector2.new(0.25, 0.75),
+	Vector2.new(0.75, 0.75),
+}
+
+local function writePixel(x, y, color, alpha)
+	local index = (y * BufferWidth + x) * 4
+	buffer.writeu8(PixelBuffer, index, math.floor(math.clamp(color.X, 0, 1) * 255 + 0.5))
+	buffer.writeu8(PixelBuffer, index + 1, math.floor(math.clamp(color.Y, 0, 1) * 255 + 0.5))
+	buffer.writeu8(PixelBuffer, index + 2, math.floor(math.clamp(color.Z, 0, 1) * 255 + 0.5))
+	buffer.writeu8(PixelBuffer, index + 3, math.floor(math.clamp(alpha, 0, 1) * 255 + 0.5))
+end
+
+local function renderSnapshot()
+	if not Camera or not ReflectionImage or not PixelBuffer then
+		return
+	end
+
+	RenderToken += 1
+	local myToken = RenderToken
+
+	local totalPixels = BufferWidth * BufferHeight
+	local viewportSize = Camera.ViewportSize
+
+	for pixelIndex = 0, totalPixels - 1 do
+		if myToken ~= RenderToken then
+			return
+		end
+
+		local x = pixelIndex % BufferWidth
+		local y = math.floor(pixelIndex / BufferWidth)
+
+		local accumulated = Vector3.new(0, 0, 0)
+
+		for sampleIndex = 1, SamplesPerPixel do
+			local offset = SampleOffsets[((sampleIndex - 1) % #SampleOffsets) + 1]
+			local screenX = ((x + offset.X) / BufferWidth) * viewportSize.X
+			local screenY = ((y + offset.Y) / BufferHeight) * viewportSize.Y
+
+			local color = tracePrimaryPixel(screenX, screenY, RaycastFilter)
+			accumulated += color
+		end
+
+		local finalColor = accumulated / SamplesPerPixel
+finalColor = Vector3.new(
+    math.clamp(finalColor.X, 0, 1),
+    math.clamp(finalColor.Y, 0, 1),
+    math.clamp(finalColor.Z, 0, 1)
+)
+
+		writePixel(x, y, finalColor, 1)
+	end
+
+	ReflectionImage:WritePixelsBuffer(Vector2.zero, Vector2.new(BufferWidth, BufferHeight), PixelBuffer)
+end
+
+applyHighQualityResolution()
+
+task.spawn(function()
+	RunService.RenderStepped:Wait()
+	renderSnapshot()
+end)
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	Camera = workspace.CurrentCamera
+	applyHighQualityResolution()
+	task.spawn(function()
+		RunService.RenderStepped:Wait()
+		renderSnapshot()
+	end)
+end)
+
+if Camera then
+	Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		applyHighQualityResolution()
+		task.spawn(function()
+			RunService.RenderStepped:Wait()
+			renderSnapshot()
+		end)
+	end)
+end
