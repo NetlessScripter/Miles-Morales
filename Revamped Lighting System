@@ -1,7 +1,7 @@
 local l = game:GetService('Lighting')
 do
 local i = Instance.new('SunRaysEffect')
-i.Intensity = 0.07800000160932541
+i.Intensity = 5
 i.Spread = 0
 i.Enabled = true
 i.Parent = l
